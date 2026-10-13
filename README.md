@@ -108,6 +108,125 @@ Visit:
 http://localhost:5173
 ```
 
+## Frontend: API base URL configuration
+
+The frontend HTTP client uses `frontend/src/api/client.js` to configure the API base URL. This file defines the request base URL used by all frontend API calls.
+
+Key lines (from `frontend/src/api/client.js`):
+
+```javascript
+import axios from 'axios'
+
+const client = axios.create({
+    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+})
+```
+
+This means:
+- If `VITE_API_URL` is set, that value is used.
+- Otherwise, the frontend falls back to `http://localhost:5000/api`.
+
+### Local development configuration
+
+Create a `.env` file inside the `frontend/` directory:
+
+```env
+# frontend/.env
+VITE_API_URL=http://localhost:5000/api
+```
+
+Then restart the Vite dev server after creating or updating the file:
+
+```bash
+cd frontend
+npm run dev
+```
+
+### Production configuration
+
+For production deployment, set `VITE_API_URL` to the deployed backend URL in your hosting provider or CI environment.
+
+Example:
+
+```bash
+# Unix/macOS
+VITE_API_URL=https://api.mybookme.com/api npm run build
+
+# Windows PowerShell
+$env:VITE_API_URL='https://api.mybookme.com/api'; npm run build
+```
+
+In other words, the frontend is not hard-coded to a single host; it reads the backend URL from the environment at build time.
+
+## Example production deployment flows
+
+### 1) Separate frontend + backend hosting (recommended)
+
+- Frontend
+  - Run: `cd frontend && npm run build`
+  - Deploy the generated `frontend/dist` folder to a static host (Netlify, Vercel, CloudFront, etc.)
+  - Set `VITE_API_URL` on that host to your backend API URL, for example:
+    ```env
+    VITE_API_URL=https://api.mybookme.com/api
+    ```
+
+- Backend
+  - Deploy the Node/Express app to a server or PaaS (Render, Railway, Heroku, DigitalOcean, AWS EC2, etc.)
+  - Set backend env vars like:
+    ```env
+    MONGO_URI=mongodb://...
+    JWT_SECRET=...
+    STRIPE_SECRET_KEY=...
+    CLIENT_URL=https://your-frontend-url.com
+    ```
+  - Ensure CORS is enabled and allows the frontend origin.
+
+### 2) Single-server deployment
+
+- Build the frontend: `cd frontend && npm run build`
+- Copy the generated `frontend/dist` files into a folder served by the backend, or configure your web server to serve static files from there.
+- Example backend pattern:
+
+```javascript
+app.use(express.static(path.join(process.cwd(), 'frontend/dist')))
+app.get('*', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'frontend/dist', 'index.html'))
+})
+```
+
+- Run the backend with production environment variables.
+
+### 3) Docker-based deployment
+
+Example frontend Dockerfile:
+
+```dockerfile
+FROM node:18-alpine as build
+WORKDIR /app
+COPY frontend/package*.json ./
+RUN npm install
+COPY frontend/ .
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+RUN npm run build
+
+FROM nginx:alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+Build command:
+
+```bash
+docker build --build-arg VITE_API_URL=https://api.mybookme.com/api -t bookme-frontend .
+```
+
+Notes:
+- `VITE_API_URL` is read at build time, so it must be set before the production bundle is generated.
+- Do not expose JWT secrets or Stripe keys to the frontend; keep them server-side.
+- Make sure `CLIENT_URL` in the backend matches the production frontend URL so Google OAuth and redirect flows work correctly.
+
 ## API reference
 
 Base URL for the backend API:
