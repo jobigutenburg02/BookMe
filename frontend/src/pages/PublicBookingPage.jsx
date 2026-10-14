@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
-  createPublicBooking,
+  createPublicBookingOtp,
   getPublicBusiness,
   getPublicSlots,
   requestPublicBookingOtp,
@@ -246,7 +246,7 @@ export default function PublicBookingPage() {
     setMessage("");
 
     try {
-      const { data } = await createPublicBooking(slug, {
+      const { data } = await createPublicBookingOtp(slug, {
         ...form,
         startTime: selectedSlot.startTime,
         endTime: selectedSlot.endTime,
