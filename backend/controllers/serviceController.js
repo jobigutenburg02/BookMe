@@ -9,7 +9,7 @@ export const listServices = async (req, res) => {
     }
 }
 
-export const createServices = async (req, res) => {
+export const createService = async (req, res) => {
     try{
         const {name, duration, price, description, icon} = req.body
 
